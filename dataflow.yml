@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dora-rs/dora/main/dora-schema.json
+
+debug:
+  enable_debug_inspection: true
+
+nodes:
+  - id: simulator
+    path: target/release/simulator
+    inputs:
+      tick: dora/timer/hz/100
+      cmd_vel:
+        source: controller/cmd_vel
+        queue_size: 1
+        queue_policy: drop_oldest
+    outputs:
+      - encoder
+      - lidar
+
+  - id: odometry
+    path: target/release/odometry
+    inputs:
+      encoder: simulator/encoder
+    outputs:
+      - pose
+
+  - id: lidar
+    path: target/release/lidar
+    inputs:
+      scan: simulator/lidar
+    outputs:
+      - obstacles
+
+  - id: controller
+    path: target/release/controller
+    inputs:
+      pose: odometry/pose
+      obstacles: lidar/obstacles
+      tick: dora/timer/hz/20
+    outputs:
+      - cmd_vel
