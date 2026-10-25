@@ -1,7 +1,7 @@
 use std::env;
 use std::time::{Duration, Instant};
 
-use dora_mujoco_navigation::wheel_speeds;
+use dora_mujoco_navigation::differential_drive::wheel_speeds;
 use dora_node_api::{DoraNode, Event, into_vec};
 use eyre::{Result, WrapErr, eyre};
 use mujoco_rs::prelude::{MjModel, MjtObj};
