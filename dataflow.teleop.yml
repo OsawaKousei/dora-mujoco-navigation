@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dora-rs/dora/main/dora-schema.json
+
+nodes:
+  - id: keyboard
+    path: target/release/keyboard
+    outputs:
+      - key_event
+
+  - id: teleop
+    path: target/release/teleop
+    inputs:
+      key_event:
+        source: keyboard/key_event
+        queue_size: 16
+        queue_policy: drop_oldest
+      tick: dora/timer/hz/20
+    outputs:
+      - cmd_vel
+
+  - id: simulator
+    path: target/release/simulator
+    inputs:
+      cmd_vel:
+        source: teleop/cmd_vel
+        queue_size: 1
+        queue_policy: drop_oldest
+      tick:
+        source: dora/timer/hz/100
+        queue_size: 1
+        queue_policy: drop_oldest
+    outputs:
+      - robot_pose
