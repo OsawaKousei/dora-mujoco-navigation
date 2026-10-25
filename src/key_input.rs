@@ -73,4 +73,35 @@ mod tests {
         assert_eq!(parser.push(b'O'), None);
         assert_eq!(parser.push(b'D'), Some(KeyAction::Left));
     }
+
+    #[test]
+    fn parses_all_directions_and_quit_keys() {
+        let mut parser = EscapeParser::default();
+        for (sequence, action) in [
+            (&b"\x1b[B"[..], KeyAction::Backward),
+            (&b"\x1b[C"[..], KeyAction::Right),
+            (&b"\x1bOA"[..], KeyAction::Forward),
+        ] {
+            let mut result = None;
+            for &byte in sequence {
+                result = parser.push(byte);
+            }
+            assert_eq!(result, Some(action));
+        }
+        assert_eq!(parser.push(b'Q'), Some(KeyAction::Quit));
+        assert_eq!(parser.push(0x03), Some(KeyAction::Quit));
+    }
+
+    #[test]
+    fn ignores_unknown_bytes_and_recovers_after_bad_escape() {
+        let mut parser = EscapeParser::default();
+        assert_eq!(parser.push(b'x'), None);
+        assert_eq!(parser.push(0x1b), None);
+        assert_eq!(parser.push(b'x'), None);
+        assert_eq!(parser.push(b' '), Some(KeyAction::Stop));
+        assert_eq!(parser.push(0x1b), None);
+        assert_eq!(parser.push(b'['), None);
+        assert_eq!(parser.push(b'Z'), None);
+        assert_eq!(parser.push(b'q'), Some(KeyAction::Quit));
+    }
 }

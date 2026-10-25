@@ -9,6 +9,43 @@ use mujoco_rs::viewer::MjViewer;
 
 const COMMAND_TIMEOUT: Duration = Duration::from_millis(300);
 
+#[derive(Default)]
+struct SimulatorCommand {
+    command: [f64; 2],
+    last_received: Option<Instant>,
+}
+
+impl SimulatorCommand {
+    fn accept(&mut self, values: &[f64], now: Instant) -> bool {
+        match values {
+            [linear, angular] if linear.is_finite() && angular.is_finite() => {
+                self.command = [*linear, *angular];
+                self.last_received = Some(now);
+                true
+            }
+            _ => {
+                self.stop();
+                false
+            }
+        }
+    }
+
+    fn stop(&mut self) {
+        self.command = [0.0, 0.0];
+        self.last_received = None;
+    }
+
+    fn current(&mut self, now: Instant) -> [f64; 2] {
+        if self
+            .last_received
+            .is_none_or(|last| now.duration_since(last) > COMMAND_TIMEOUT)
+        {
+            self.stop();
+        }
+        self.command
+    }
+}
+
 fn main() -> Result<()> {
     let model_path = env::var("MUJOCO_MODEL_PATH")
         .unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/assets/robot.xml").to_owned());
@@ -24,34 +61,34 @@ fn main() -> Result<()> {
         .ok_or_else(|| eyre!("actuator 'right_motor' is missing"))?;
 
     let mut data = model.make_data();
-    let mut viewer = MjViewer::builder()
-        .build_passive(&model)
-        .wrap_err("failed to open MuJoCo viewer")?;
+    let mut viewer = if env::var("MUJOCO_HEADLESS").as_deref() == Ok("1") {
+        None
+    } else {
+        Some(
+            MjViewer::builder()
+                .build_passive(&model)
+                .wrap_err("failed to open MuJoCo viewer")?,
+        )
+    };
     let (mut node, mut events) = DoraNode::init_from_env()?;
-    let mut command = [0.0_f64; 2];
-    let mut last_command: Option<Instant> = None;
+    let mut command = SimulatorCommand::default();
     let mut tick_count = 0_u64;
 
     while let Some(event) = events.recv() {
         match event {
             Event::Input {
                 id, data: input, ..
-            } if id.as_str() == "cmd_vel" => match into_vec::<f64>(&input) {
-                Ok(values) if values.len() == 2 && values.iter().all(|v| v.is_finite()) => {
-                    command.copy_from_slice(&values);
-                    last_command = Some(Instant::now());
-                }
-                _ => {
+            } if id.as_str() == "cmd_vel" => {
+                if !into_vec::<f64>(&input)
+                    .is_ok_and(|values| command.accept(&values, Instant::now()))
+                {
                     eprintln!("simulator: invalid cmd_vel; stopping robot");
-                    command = [0.0, 0.0];
-                    last_command = None;
+                    command.stop();
                 }
-            },
+            }
             Event::Input { id, .. } if id.as_str() == "tick" => {
-                if last_command.is_none_or(|last| last.elapsed() > COMMAND_TIMEOUT) {
-                    command = [0.0, 0.0];
-                }
-                let speeds = wheel_speeds(command[0], command[1]);
+                let [linear, angular] = command.current(Instant::now());
+                let speeds = wheel_speeds(linear, angular);
                 data.ctrl_mut()[left_id] = speeds.left;
                 data.ctrl_mut()[right_id] = speeds.right;
                 // robot.xml uses a 5 ms physics step; the dora timer runs at 100 Hz.
@@ -64,7 +101,9 @@ fn main() -> Result<()> {
                 node.send_output("robot_pose".into(), Default::default(), vec![x, y, yaw])?;
 
                 tick_count += 1;
-                if tick_count.is_multiple_of(2) {
+                if tick_count.is_multiple_of(2)
+                    && let Some(viewer) = viewer.as_mut()
+                {
                     viewer.sync_data(&mut data);
                     viewer.render()?;
                     if !viewer.running() {
@@ -77,4 +116,39 @@ fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_finite_pair_and_expires_after_300_ms() {
+        let start = Instant::now();
+        let mut state = SimulatorCommand::default();
+        assert_eq!(state.current(start), [0.0, 0.0]);
+        assert!(state.accept(&[0.24, -1.0], start));
+        assert_eq!(state.current(start + COMMAND_TIMEOUT), [0.24, -1.0]);
+        assert_eq!(
+            state.current(start + COMMAND_TIMEOUT + Duration::from_millis(1)),
+            [0.0, 0.0]
+        );
+    }
+
+    #[test]
+    fn malformed_or_nonfinite_command_stops_immediately() {
+        let now = Instant::now();
+        for values in [
+            &[][..],
+            &[0.1][..],
+            &[0.1, 0.2, 0.3][..],
+            &[f64::NAN, 0.0][..],
+            &[0.0, f64::INFINITY][..],
+        ] {
+            let mut state = SimulatorCommand::default();
+            assert!(state.accept(&[0.24, 0.0], now));
+            assert!(!state.accept(values, now));
+            assert_eq!(state.current(now), [0.0, 0.0]);
+        }
+    }
 }

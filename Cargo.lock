@@ -1148,6 +1148,8 @@ dependencies = [
  "eyre",
  "libc",
  "mujoco-rs",
+ "serde_json",
+ "serde_yaml",
 ]
 
 [[package]]

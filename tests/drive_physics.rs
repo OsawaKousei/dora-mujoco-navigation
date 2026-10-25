@@ -26,14 +26,28 @@ fn run_command(linear: f64, angular: f64) -> (f64, f64, f64) {
 
 #[test]
 fn positive_linear_command_moves_robot_forward() {
-    let (x, _, _) = run_command(0.24, 0.0);
+    let (x, y, yaw) = run_command(0.24, 0.0);
     assert!(x > 0.1, "robot did not move forward: x={x}");
+    assert!(y.abs() < 0.05, "straight command drifted sideways: y={y}");
+    assert!(yaw.abs() < 0.1, "straight command turned: yaw={yaw}");
+}
+
+#[test]
+fn negative_linear_command_moves_robot_backward() {
+    let (x, _, _) = run_command(-0.24, 0.0);
+    assert!(x < -0.1, "robot did not move backward: x={x}");
 }
 
 #[test]
 fn positive_angular_command_turns_robot_left() {
     let (_, _, yaw) = run_command(0.0, 1.0);
     assert!(yaw > 0.3, "robot did not turn left: yaw={yaw}");
+}
+
+#[test]
+fn negative_angular_command_turns_robot_right() {
+    let (_, _, yaw) = run_command(0.0, -1.0);
+    assert!(yaw < -0.3, "robot did not turn right: yaw={yaw}");
 }
 
 #[test]
@@ -90,6 +104,10 @@ fn zero_wheel_command_brakes_the_robot() {
         data.step();
     }
     let before_stop = data.xpos()[robot][0];
+    assert!(
+        before_stop > 0.03,
+        "robot never accelerated: x={before_stop}"
+    );
     data.ctrl_mut()[left] = 0.0;
     data.ctrl_mut()[right] = 0.0;
     for _ in 0..100 {

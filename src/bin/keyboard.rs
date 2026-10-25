@@ -13,6 +13,13 @@ use eyre::{Result, WrapErr, bail};
 
 struct SocketPath(PathBuf);
 
+fn valid_key_bytes(bytes: &[u8]) -> impl Iterator<Item = u8> + '_ {
+    bytes
+        .iter()
+        .copied()
+        .filter(|byte| KeyAction::from_byte(*byte).is_some())
+}
+
 impl Drop for SocketPath {
     fn drop(&mut self) {
         let _ = fs::remove_file(&self.0);
@@ -86,10 +93,8 @@ fn main() -> Result<()> {
                     break;
                 }
                 Ok(count) => {
-                    for byte in &bytes[..count] {
-                        if KeyAction::from_byte(*byte).is_some() {
-                            node.send_output("key_event".into(), Default::default(), vec![*byte])?;
-                        }
+                    for byte in valid_key_bytes(&bytes[..count]) {
+                        node.send_output("key_event".into(), Default::default(), vec![byte])?;
                     }
                 }
                 Err(error) if error.kind() == io::ErrorKind::WouldBlock => {}
@@ -99,4 +104,17 @@ fn main() -> Result<()> {
         thread::sleep(Duration::from_millis(10));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn forwards_only_known_key_actions_in_order() {
+        assert_eq!(
+            valid_key_bytes(&[0, 1, 7, 5, 255, 6]).collect::<Vec<_>>(),
+            vec![1, 5, 6]
+        );
+    }
 }

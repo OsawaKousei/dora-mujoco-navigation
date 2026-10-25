@@ -29,9 +29,25 @@ dora ノードではありません。
 | `simulator/robot_pose` | `f64` × 3 | `[ワールド座標 x m, y m, yaw rad]` |
 
 MuJoCo の物理刻みは 5 ms で、100 Hz の dora タイマー１回につき２ステップ進めます。
-描画は２回のタイマーイベントにつき１回です。300 ms 以上 `cmd_vel` が届かなければ
+描画は２回のタイマーイベントにつき１回です。300 ms を超えて `cmd_vel` が届かなければ
 車輪を停止します。キー入力端末が切断された場合も停止イベントを送ります。
 速度アクチュエータが安定するよう、モデルには `implicitfast` 積分を設定しています。
 
 既存の `dataflow.yml` は、未実装の `controller`・`odometry`・`lidar` を含む
 自律走行向けの構成案です。現時点のテレオペには `dataflow.teleop.yml` を使用します。
+
+## テスト
+
+Linux で `dora` CLI が利用できる場合、次のコマンドで単体テスト・
+MuJoCo の物理テスト、PTY による `keyboard_tty` の結合テスト、Dora の E2E テストを
+この順に実行します。
+
+```sh
+./scripts/test-all.sh
+```
+
+E2E テストは `keyboard → teleop → simulator` を実際の Dora フローで起動し、
+仮想端末から前進と停止を入力して `robot_pose` の移動と停止を検証します。
+シミュレーターには `MUJOCO_HEADLESS=1` を設定するため、画面は不要です。
+E2E テストは外部コマンドとローカル IPC を使うため、通常の `cargo test` では
+無視され、上記スクリプトで最後に明示的に実行されます。

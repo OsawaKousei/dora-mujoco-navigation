@@ -46,4 +46,22 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn reverse_turn_combines_wheels_and_clamps_each_side() {
+        assert_eq!(
+            wheel_speeds(-0.3, 1.0),
+            WheelSpeeds {
+                left: -7.0,
+                right: -3.0
+            }
+        );
+        assert_eq!(
+            wheel_speeds(0.6, 3.0),
+            WheelSpeeds {
+                left: 4.0,
+                right: 12.0
+            }
+        );
+    }
 }
