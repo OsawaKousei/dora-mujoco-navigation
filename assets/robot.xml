@@ -68,6 +68,17 @@
             priority="1"
             condim="1"
             group="2"/>
+
+      <!-- Visual mount overlaps both the chassis underside and caster. -->
+      <geom name="caster_mount"
+            type="capsule"
+            fromto="-0.14 0 0.01 -0.17 0 -0.04"
+            size="0.012"
+            mass="0"
+            contype="0"
+            conaffinity="0"
+            rgba="0.35 0.35 0.35 1"
+            group="2"/>
     </body>
   </worldbody>
 
