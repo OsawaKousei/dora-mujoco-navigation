@@ -1,4 +1,4 @@
-use dora_mujoco_navigation::wheel_speeds;
+use dora_mujoco_navigation::differential_drive::wheel_speeds;
 use mujoco_rs::prelude::{MjModel, MjtObj};
 
 fn run_command(linear: f64, angular: f64) -> (f64, f64, f64) {
@@ -13,8 +13,8 @@ fn run_command(linear: f64, angular: f64) -> (f64, f64, f64) {
         .unwrap();
     let mut data = model.make_data();
     let speeds = wheel_speeds(linear, angular);
-    data.ctrl_mut()[left] = speeds[0];
-    data.ctrl_mut()[right] = speeds[1];
+    data.ctrl_mut()[left] = speeds.left;
+    data.ctrl_mut()[right] = speeds.right;
     for _ in 0..400 {
         data.step();
     }
@@ -55,8 +55,8 @@ fn robot_stays_grounded_in_each_teleop_direction() {
     ] {
         let mut data = model.make_data();
         let speeds = wheel_speeds(linear, angular);
-        data.ctrl_mut()[left] = speeds[0];
-        data.ctrl_mut()[right] = speeds[1];
+        data.ctrl_mut()[left] = speeds.left;
+        data.ctrl_mut()[right] = speeds.right;
         let (mut max_z, mut max_tilt) = (0.0_f64, 0.0_f64);
         for _ in 0..400 {
             data.step();
@@ -84,8 +84,8 @@ fn zero_wheel_command_brakes_the_robot() {
         .unwrap();
     let mut data = model.make_data();
     let speeds = wheel_speeds(0.24, 0.0);
-    data.ctrl_mut()[left] = speeds[0];
-    data.ctrl_mut()[right] = speeds[1];
+    data.ctrl_mut()[left] = speeds.left;
+    data.ctrl_mut()[right] = speeds.right;
     for _ in 0..200 {
         data.step();
     }

@@ -3,7 +3,7 @@ use std::io::{self, Read, Write};
 use std::os::fd::AsRawFd;
 use std::os::unix::net::UnixStream;
 
-use dora_mujoco_navigation::keyboard::{EscapeParser, KeyAction};
+use dora_mujoco_navigation::key_input::{EscapeParser, KeyAction};
 use eyre::{Result, WrapErr, bail};
 
 struct RawTerminal {

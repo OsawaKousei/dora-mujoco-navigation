@@ -7,7 +7,7 @@ use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use dora_mujoco_navigation::keyboard::KeyAction;
+use dora_mujoco_navigation::key_input::KeyAction;
 use dora_node_api::{DoraNode, Event, TryRecvError};
 use eyre::{Result, WrapErr, bail};
 

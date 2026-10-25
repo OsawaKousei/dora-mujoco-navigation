@@ -51,9 +51,9 @@ fn main() -> Result<()> {
                 if last_command.is_none_or(|last| last.elapsed() > COMMAND_TIMEOUT) {
                     command = [0.0, 0.0];
                 }
-                let [left, right] = wheel_speeds(command[0], command[1]);
-                data.ctrl_mut()[left_id] = left;
-                data.ctrl_mut()[right_id] = right;
+                let speeds = wheel_speeds(command[0], command[1]);
+                data.ctrl_mut()[left_id] = speeds.left;
+                data.ctrl_mut()[right_id] = speeds.right;
                 // robot.xml uses a 5 ms physics step; the dora timer runs at 100 Hz.
                 data.step();
                 data.step();

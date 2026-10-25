@@ -1,4 +1,4 @@
-use dora_mujoco_navigation::keyboard::KeyAction;
+use dora_mujoco_navigation::key_input::KeyAction;
 use dora_node_api::{DoraNode, Event, into_vec};
 use eyre::Result;
 
