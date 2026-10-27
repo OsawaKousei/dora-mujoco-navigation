@@ -2,6 +2,8 @@
 name = "dora-mujoco-navigation"
 version = "0.1.0"
 edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/OsawaKousei/dora-mujoco-navigation"
 autobins = false
 
 [[bin]]
@@ -20,11 +22,38 @@ path = "src/bin/keyboard_tty.rs"
 name = "teleop"
 path = "src/bin/teleop.rs"
 
+[[bin]]
+name = "odometry"
+path = "src/bin/odometry.rs"
+
+[[bin]]
+name = "lidar"
+path = "src/bin/lidar.rs"
+
+[[bin]]
+name = "localization"
+path = "src/bin/localization.rs"
+
+[[bin]]
+name = "planner"
+path = "src/bin/planner.rs"
+
+[[bin]]
+name = "controller"
+path = "src/bin/controller.rs"
+
+[[bin]]
+name = "trajectory_plot"
+path = "src/bin/trajectory_plot.rs"
+
 [dependencies]
 dora-node-api = "1.1.0"
 eyre = "0.6.14"
 libc = "0.2"
 mujoco-rs = { version = "=6.1.0", features = ["viewer"] }
+plotters = "0.3.7"
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
 
 [dev-dependencies]
 serde_json = "1"
