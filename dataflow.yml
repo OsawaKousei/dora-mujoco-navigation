@@ -1,4 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/dora-rs/dora/main/dora-schema.json
+# Autonomous driving flow. Message contracts: docs/autonomous-dataflow.md.
 
 debug:
   enable_debug_inspection: true
@@ -7,34 +8,86 @@ nodes:
   - id: simulator
     path: target/release/simulator
     inputs:
-      tick: dora/timer/hz/100
+      tick:
+        source: dora/timer/hz/100
+        queue_size: 1
+        queue_policy: drop_oldest
       cmd_vel:
         source: controller/cmd_vel
         queue_size: 1
         queue_policy: drop_oldest
     outputs:
       - encoder
-      - lidar
+      - robot_pose
+      - collision
 
   - id: odometry
     path: target/release/odometry
     inputs:
-      encoder: simulator/encoder
+      encoder:
+        source: simulator/encoder
+        queue_size: 32
+        queue_policy: backpressure
     outputs:
-      - pose
+      - delta
 
   - id: lidar
     path: target/release/lidar
     inputs:
-      scan: simulator/lidar
+      robot_pose:
+        source: simulator/robot_pose
+        queue_size: 1
+        queue_policy: drop_oldest
+      tick:
+        source: dora/timer/hz/5
+        queue_size: 1
+        queue_policy: drop_oldest
     outputs:
-      - obstacles
+      - scan
+
+  - id: localization
+    path: target/release/localization
+    inputs:
+      odom_delta:
+        source: odometry/delta
+        queue_size: 32
+        queue_policy: backpressure
+      scan:
+        source: lidar/scan
+        queue_size: 4
+        queue_policy: backpressure
+    outputs:
+      - pose
+
+  - id: planner
+    path: target/release/planner
+    inputs:
+      tick:
+        source: dora/timer/hz/1
+        queue_size: 1
+        queue_policy: drop_oldest
+    outputs:
+      - path
 
   - id: controller
     path: target/release/controller
     inputs:
-      pose: odometry/pose
-      obstacles: lidar/obstacles
-      tick: dora/timer/hz/20
+      pose:
+        source: localization/pose
+        queue_size: 1
+        queue_policy: drop_oldest
+      path:
+        source: planner/path
+        queue_size: 1
+        queue_policy: drop_oldest
+      collision:
+        source: simulator/collision
+        queue_size: 1
+        queue_policy: backpressure
+      tick:
+        source: dora/timer/hz/20
+        queue_size: 1
+        queue_policy: drop_oldest
     outputs:
       - cmd_vel
+      - status

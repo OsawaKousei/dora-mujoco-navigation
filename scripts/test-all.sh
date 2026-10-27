@@ -21,3 +21,4 @@ cd "$repo_root"
 cargo test --offline --lib --bins --test drive_physics
 cargo test --offline --test keyboard_tty_pty
 cargo test --offline --test teleop_e2e -- --ignored --exact keyboard_to_robot_pose --nocapture
+cargo test --offline --test autonomous_e2e -- --ignored --exact reaches_goal_without_collision --nocapture

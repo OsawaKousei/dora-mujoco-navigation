@@ -33,8 +33,13 @@ MuJoCo の物理刻みは 5 ms で、100 Hz の dora タイマー１回につき
 車輪を停止します。キー入力端末が切断された場合も停止イベントを送ります。
 速度アクチュエータが安定するよう、モデルには `implicitfast` 積分を設定しています。
 
-既存の `dataflow.yml` は、未実装の `controller`・`odometry`・`lidar` を含む
-自律走行向けの構成案です。現時点のテレオペには `dataflow.teleop.yml` を使用します。
+`dataflow.yml` は、独立した `lidar`・`odometry` ノードを含む自律走行向けの設計です。
+ノードの責務とメッセージ契約は [`docs/autonomous-dataflow.md`](docs/autonomous-dataflow.md) に記載しています。
+自律走行は `./scripts/run-autonomous.sh` で起動します。画面を使わない場合は
+`MUJOCO_HEADLESS=1 ./scripts/run-autonomous.sh --stop-after 45s` とします。
+既定のマップは上下から交互に張り出す２つの障害物を回避する構成です。
+開始位置・目標・障害物・速度は `configs/autonomous.toml` で設定できます。
+テレオペには `dataflow.teleop.yml` を使用します。
 
 ## テスト
 
@@ -46,8 +51,10 @@ MuJoCo の物理テスト、PTY による `keyboard_tty` の結合テスト、Do
 ./scripts/test-all.sh
 ```
 
-E2E テストは `keyboard → teleop → simulator` を実際の Dora フローで起動し、
+テレオペの E2E テストは `keyboard → teleop → simulator` を実際の Dora フローで起動し、
 仮想端末から前進と停止を入力して `robot_pose` の移動と停止を検証します。
+自律走行の E2E テストは `simulator → odometry/lidar → localization → controller` と
+`planner` を起動し、衝突せずに目標へ到達して停止することを検証します。
 シミュレーターには `MUJOCO_HEADLESS=1` を設定するため、画面は不要です。
 E2E テストは外部コマンドとローカル IPC を使うため、通常の `cargo test` では
 無視され、上記スクリプトで最後に明示的に実行されます。

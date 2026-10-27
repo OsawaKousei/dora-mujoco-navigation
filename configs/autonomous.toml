@@ -1,0 +1,65 @@
+[map]
+width = 5.0
+height = 3.0
+resolution = 0.05
+
+[robot.start]
+x = 0.6
+y = 1.5
+theta = 0.0
+
+[robot.goal]
+x = 4.4
+y = 1.5
+theta = 0.0
+
+[navigation]
+robot_radius = 0.24
+goal_tolerance = 0.20
+lookahead_distance = 0.35
+linear_speed = 0.30
+angular_speed = 1.2
+
+[lidar]
+ray_count = 120
+min_angle = -3.141592653589793
+max_angle = 3.141592653589793
+max_range = 5.0
+noise_stddev = 0.005
+
+# The same rectangles generate the occupancy map, simulated LiDAR, and MuJoCo geoms.
+[[obstacles]]
+x = 0.1
+y = 1.5
+half_x = 0.1
+half_y = 1.5
+
+[[obstacles]]
+x = 4.9
+y = 1.5
+half_x = 0.1
+half_y = 1.5
+
+[[obstacles]]
+x = 2.5
+y = 0.1
+half_x = 2.5
+half_y = 0.1
+
+[[obstacles]]
+x = 2.5
+y = 2.9
+half_x = 2.5
+half_y = 0.1
+
+[[obstacles]]
+x = 1.5
+y = 0.9
+half_x = 0.2
+half_y = 0.7
+
+[[obstacles]]
+x = 3.5
+y = 2.1
+half_x = 0.2
+half_y = 0.7

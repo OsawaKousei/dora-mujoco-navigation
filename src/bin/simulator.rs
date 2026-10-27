@@ -2,6 +2,8 @@ use std::env;
 use std::time::{Duration, Instant};
 
 use dora_mujoco_navigation::differential_drive::wheel_speeds;
+use dora_mujoco_navigation::nav_messages::{Stamp, stamped_parameters};
+use dora_mujoco_navigation::navigation::Scenario;
 use dora_node_api::{DoraNode, Event, into_vec};
 use eyre::{Result, WrapErr, eyre};
 use mujoco_rs::prelude::{MjModel, MjtObj};
@@ -47,9 +49,17 @@ impl SimulatorCommand {
 }
 
 fn main() -> Result<()> {
-    let model_path = env::var("MUJOCO_MODEL_PATH")
-        .unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/assets/robot.xml").to_owned());
-    let model = MjModel::from_xml(&model_path).wrap_err("failed to load MuJoCo model")?;
+    let autonomous = env::var_os("AUTO_DRIVE_SCENARIO").is_some();
+    let scenario = autonomous.then(Scenario::load_from_env).transpose()?;
+    let model = if let Some(scenario) = &scenario {
+        MjModel::from_xml_string(&scenario.mujoco_xml()?)
+            .wrap_err("failed to build autonomous MuJoCo model")?
+    } else {
+        let model_path = env::var("MUJOCO_MODEL_PATH").unwrap_or_else(|_| {
+            concat!(env!("CARGO_MANIFEST_DIR"), "/assets/robot.xml").to_owned()
+        });
+        MjModel::from_xml(&model_path).wrap_err("failed to load MuJoCo model")?
+    };
     let robot_id = model
         .name_to_id(MjtObj::mjOBJ_BODY, "robot")
         .ok_or_else(|| eyre!("body 'robot' is missing"))?;
@@ -59,6 +69,17 @@ fn main() -> Result<()> {
     let right_id = model
         .name_to_id(MjtObj::mjOBJ_ACTUATOR, "right_motor")
         .ok_or_else(|| eyre!("actuator 'right_motor' is missing"))?;
+    let wall_ids: Vec<_> = if let Some(scenario) = &scenario {
+        (0..scenario.obstacles.len())
+            .map(|index| {
+                model
+                    .name_to_id(MjtObj::mjOBJ_GEOM, &format!("nav_wall_{index}"))
+                    .ok_or_else(|| eyre!("MuJoCo wall {index} is missing"))
+            })
+            .collect::<Result<Vec<_>>>()?
+    } else {
+        Vec::new()
+    };
 
     let mut data = model.make_data();
     let mut viewer = if env::var("MUJOCO_HEADLESS").as_deref() == Ok("1") {
@@ -73,6 +94,7 @@ fn main() -> Result<()> {
     let (mut node, mut events) = DoraNode::init_from_env()?;
     let mut command = SimulatorCommand::default();
     let mut tick_count = 0_u64;
+    let mut collided = false;
 
     while let Some(event) = events.recv() {
         match event {
@@ -87,7 +109,11 @@ fn main() -> Result<()> {
                 }
             }
             Event::Input { id, .. } if id.as_str() == "tick" => {
-                let [linear, angular] = command.current(Instant::now());
+                let [linear, angular] = if collided {
+                    [0.0, 0.0]
+                } else {
+                    command.current(Instant::now())
+                };
                 let speeds = wheel_speeds(linear, angular);
                 data.ctrl_mut()[left_id] = speeds.left;
                 data.ctrl_mut()[right_id] = speeds.right;
@@ -98,9 +124,40 @@ fn main() -> Result<()> {
                 let [x, y, _] = data.xpos()[robot_id];
                 let [w, qx, qy, qz] = data.xquat()[robot_id];
                 let yaw = (2.0 * (w * qz + qx * qy)).atan2(1.0 - 2.0 * (qy * qy + qz * qz));
-                node.send_output("robot_pose".into(), Default::default(), vec![x, y, yaw])?;
-
                 tick_count += 1;
+                if scenario.is_some() {
+                    let stamp = Stamp {
+                        step: tick_count as i64,
+                        sim_time_ns: (data.time() * 1e9).round() as i64,
+                    };
+                    node.send_output(
+                        "encoder".into(),
+                        stamped_parameters(stamp),
+                        vec![data.sensordata()[0], data.sensordata()[1]],
+                    )?;
+                    node.send_output(
+                        "robot_pose".into(),
+                        stamped_parameters(stamp),
+                        vec![x, y, yaw],
+                    )?;
+                    if !collided
+                        && data.contact().iter().any(|contact| {
+                            wall_ids.contains(&(contact.geom1 as usize))
+                                || wall_ids.contains(&(contact.geom2 as usize))
+                        })
+                    {
+                        collided = true;
+                        eprintln!("simulator: collision at x={x:.3}, y={y:.3}");
+                        command.stop();
+                        node.send_output(
+                            "collision".into(),
+                            stamped_parameters(stamp),
+                            vec![1_u8],
+                        )?;
+                    }
+                } else {
+                    node.send_output("robot_pose".into(), Default::default(), vec![x, y, yaw])?;
+                }
                 if tick_count.is_multiple_of(2)
                     && let Some(viewer) = viewer.as_mut()
                 {
