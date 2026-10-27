@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/dora-rs/dora/main/dora-schema.json
-# Autonomous driving flow. Message contracts: docs/autonomous-dataflow.md.
+# Autonomous driving flow. See README.md for the node overview.
 
 debug:
   enable_debug_inspection: true
