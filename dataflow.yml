@@ -91,3 +91,23 @@ nodes:
     outputs:
       - cmd_vel
       - status
+
+  - id: trajectory_plot
+    path: target/release/trajectory_plot
+    inputs:
+      path:
+        source: planner/path
+        queue_size: 1
+        queue_policy: drop_oldest
+      robot_pose:
+        source: simulator/robot_pose
+        queue_size: 32
+        queue_policy: drop_oldest
+      status:
+        source: controller/status
+        queue_size: 4
+        queue_policy: backpressure
+      tick:
+        source: dora/timer/hz/1
+        queue_size: 1
+        queue_policy: drop_oldest

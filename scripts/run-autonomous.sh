@@ -16,5 +16,5 @@ export MUJOCO_DYNAMIC_LINK_DIR="$lib_dir"
 export LD_LIBRARY_PATH="$lib_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export AUTO_DRIVE_SCENARIO="${AUTO_DRIVE_SCENARIO:-$repo_root/configs/autonomous.toml}"
 cd "$repo_root"
-cargo build --release --offline --bin simulator --bin odometry --bin lidar --bin localization --bin planner --bin controller
+cargo build --release --offline --bin simulator --bin odometry --bin lidar --bin localization --bin planner --bin controller --bin trajectory_plot
 exec dora run dataflow.yml "$@"

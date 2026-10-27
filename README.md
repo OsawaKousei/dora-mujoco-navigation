@@ -39,6 +39,8 @@ MuJoCo の物理刻みは 5 ms で、100 Hz の dora タイマー１回につき
 `MUJOCO_HEADLESS=1 ./scripts/run-autonomous.sh --stop-after 45s` とします。
 既定のマップは上下から交互に張り出す２つの障害物を回避する構成です。
 開始位置・目標・障害物・速度は `configs/autonomous.toml` で設定できます。
+計画経路と実走行軌跡の Plotters 画像は、走行中に `out/autonomous-path.png` に更新され、
+目標到達時に最終画像が保存されます。保存先は `TRAJECTORY_PLOT_PATH` で変更できます。
 テレオペには `dataflow.teleop.yml` を使用します。
 
 ## テスト
@@ -54,7 +56,8 @@ MuJoCo の物理テスト、PTY による `keyboard_tty` の結合テスト、Do
 テレオペの E2E テストは `keyboard → teleop → simulator` を実際の Dora フローで起動し、
 仮想端末から前進と停止を入力して `robot_pose` の移動と停止を検証します。
 自律走行の E2E テストは `simulator → odometry/lidar → localization → controller` と
-`planner` を起動し、衝突せずに目標へ到達して停止することを検証します。
+`planner` と `trajectory_plot` を起動し、衝突せずに目標へ到達して停止すること、
+経路画像が生成されることを検証します。
 シミュレーターには `MUJOCO_HEADLESS=1` を設定するため、画面は不要です。
 E2E テストは外部コマンドとローカル IPC を使うため、通常の `cargo test` では
 無視され、上記スクリプトで最後に明示的に実行されます。

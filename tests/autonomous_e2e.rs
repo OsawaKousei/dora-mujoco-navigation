@@ -27,6 +27,7 @@ fn reaches_goal_without_collision() -> Result<()> {
     let root = std::env::temp_dir().join(format!("autonomous-e2e-{}-{unique}", std::process::id()));
     fs::create_dir(&root)?;
     let result_path = root.join("observation.json");
+    let plot_path = root.join("trajectory.png");
     let graph_path = root.join("dataflow.yml");
     let mut graph: serde_yaml::Value =
         serde_yaml::from_str(&fs::read_to_string(repo.join("dataflow.yml"))?)?;
@@ -41,6 +42,7 @@ fn reaches_goal_without_collision() -> Result<()> {
             Some("localization") => env!("CARGO_BIN_EXE_localization"),
             Some("planner") => env!("CARGO_BIN_EXE_planner"),
             Some("controller") => env!("CARGO_BIN_EXE_controller"),
+            Some("trajectory_plot") => env!("CARGO_BIN_EXE_trajectory_plot"),
             other => eyre::bail!("unexpected node: {other:?}"),
         };
         node["path"] = serde_yaml::Value::String(path.to_owned());
@@ -76,6 +78,7 @@ fn reaches_goal_without_collision() -> Result<()> {
         .env("MUJOCO_DYNAMIC_LINK_DIR", &lib_dir)
         .env("LD_LIBRARY_PATH", library_path)
         .env("AUTONOMOUS_E2E_RESULTS", &result_path)
+        .env("TRAJECTORY_PLOT_PATH", &plot_path)
         .stdout(Stdio::from(fs::File::create(&stdout_path)?))
         .stderr(Stdio::from(fs::File::create(&stderr_path)?))
         .spawn()?;
@@ -133,6 +136,12 @@ fn reaches_goal_without_collision() -> Result<()> {
     ensure!(
         (last[0] - estimate[0]).hypot(last[1] - estimate[1]) < 0.25,
         "localization drifted: true={last:?}, estimated={estimate:?}"
+    );
+    let png = fs::read(&plot_path)?;
+    ensure!(
+        png.starts_with(b"\x89PNG\r\n\x1a\n") && png.len() > 3000,
+        "trajectory PNG was not generated correctly; logs at {}",
+        root.display()
     );
     fs::remove_dir_all(root)?;
     Ok(())
